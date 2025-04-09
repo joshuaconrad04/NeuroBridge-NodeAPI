@@ -69,7 +69,7 @@ const processAudioSummary = async (req, res) => {
         // 1. First, transcribe the audio using OpenAI's Whisper API
         const transcript = await openai.audio.transcriptions.create({
             file: fs.createReadStream(req.file.path),
-            model: "whisper-1"
+            model: "gpt-4o-mini-transcribe"
         });
 
         console.log('Full transcript result:', transcript);
