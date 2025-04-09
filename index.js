@@ -9,7 +9,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin:['http://localhost:5173', 'https://neuro-bridge-two.vercel.app/'],
+    origin:['http://localhost:5173', 'https://neuro-bridge-two.vercel.app'],
      // Default Vite frontend port
     credentials: true
 }));
