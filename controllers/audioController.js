@@ -76,6 +76,13 @@ const processAudioSummary = async (req, res) => {
         console.log('Transcript:', transcript.text);
 
         // 2. Then, use GPT to extract key tasks from the transcript
+        if (transcript.text.length < 500) {
+            return res.status(400).json({
+                success: false,
+                message: 'Transcript is too short'
+            });
+        }
+
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
