@@ -53,6 +53,18 @@ app.post('/api/summarize', uploadMiddleware, summarizePDF);
 
 // Audio summarization endpoint
 app.post('/api/audiosummary', audioMiddleware, processAudioSummary);
+app.get('/api/audiosummary',(req, res) => {
+    
+    res.json({
+        success: true,
+        message: 'Audio summary is running!',
+    });
+
+});
+
+
+   
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
