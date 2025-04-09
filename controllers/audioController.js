@@ -60,6 +60,7 @@ const processAudioSummary = async (req, res) => {
             model: "whisper-1"
         });
 
+        console.log('Full transcript result:', transcript);
         console.log('Transcript:', transcript.text);
 
         // 2. Then, use GPT to extract key tasks from the transcript
@@ -83,7 +84,7 @@ const processAudioSummary = async (req, res) => {
         });
 
         // 4. Send the response
-        console.log('Audio summary:', completion);
+        console.log('Audio summary:', completion.choices[0].message.content);
         res.json({
             success: true,
             transcript: transcript.text,
@@ -98,7 +99,7 @@ const processAudioSummary = async (req, res) => {
             });
         }
 
-        console.error('Error processing audio:', error);
+        console.error('Error processing audio:', error.message, error.stack);
         res.status(500).json({
             success: false,
             message: 'Error processing audio file',
