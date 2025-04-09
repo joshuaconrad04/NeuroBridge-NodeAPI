@@ -16,7 +16,11 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + path.extname(file.originalname));
+        if (file.mimetype === 'audio/mpeg') {
+            cb(null, Date.now() + path.extname(file.originalname) + '.mp3');
+        } else {
+            cb(null, Date.now() + path.extname(file.originalname));
+        }
     }
 });
 
@@ -47,6 +51,13 @@ const processAudioSummary = async (req, res) => {
                 message: 'No audio file provided'
             });
         }
+
+        console.log('Audio file received:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            bufferLength: req.file.buffer.length
+        });
 
         // 1. First, transcribe the audio using OpenAI's Whisper API
         const transcript = await openai.audio.transcriptions.create({

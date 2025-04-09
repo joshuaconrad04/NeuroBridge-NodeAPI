@@ -35,6 +35,7 @@ const uploadMiddleware = upload.single('file');
 const summarizePDF = async (req, res) => {
   try {
     // Check if file was provided and log file details
+    console.log('req.file', req.file);
     if (!req.file) {
       console.log('No file in request');
       return res.status(400).json({
