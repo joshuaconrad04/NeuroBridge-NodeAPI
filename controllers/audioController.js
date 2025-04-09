@@ -52,12 +52,12 @@ const processAudioSummary = async (req, res) => {
             });
         }
 
-        console.log('Audio file received:', {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            bufferLength: req.file.buffer.length
-        });
+        // console.log('Audio file received:', {
+        //     originalname: req.file.originalname,
+        //     mimetype: req.file.mimetype,
+        //     size: req.file.size,
+        //     bufferLength: req.file.buffer.length
+        // });
 
         // 1. First, transcribe the audio using OpenAI's Whisper API
         const transcript = await openai.audio.transcriptions.create({
