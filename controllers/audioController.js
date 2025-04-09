@@ -54,6 +54,18 @@ const processAudioSummary = async (req, res) => {
         
         console.log('Audio file received: ' + req.file.path);
 
+       // console.log('Here is the size of the file that was passed in ', req.file.size);
+        // Check if the file exists
+        if (!fs.existsSync(req.file.path)) {
+            console.error('File does not exist:', req.file.path);
+            return res.status(500).json({
+                success: false,
+                message: 'File not found on server'
+            });
+        }
+
+        console.log('Here is the size of the file that was passed in ', req.file.size);
+
         // 1. First, transcribe the audio using OpenAI's Whisper API
         const transcript = await openai.audio.transcriptions.create({
             file: fs.createReadStream(req.file.path),
