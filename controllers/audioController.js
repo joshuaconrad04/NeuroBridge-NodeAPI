@@ -60,13 +60,15 @@ const processAudioSummary = async (req, res) => {
             model: "whisper-1"
         });
 
+        console.log('Transcript:', transcript.text);
+
         // 2. Then, use GPT to extract key tasks from the transcript
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
-                    content: "You are a helpful assistant that extracts key tasks and action items from meeting transcripts. Please provide a clear, bullet-pointed list of tasks."
+                    content: "You're are a helpful assistant that extracts key tasks and action items from meeting transcripts. Please provide a clear, bullet-pointed list of tasks."
                 },
                 {
                     role: "user",
@@ -81,7 +83,7 @@ const processAudioSummary = async (req, res) => {
         });
 
         // 4. Send the response
-        console.log('Audio summary:', completion.choices[0].message.content);
+        console.log('Audio summary:', completion);
         res.json({
             success: true,
             transcript: transcript.text,

@@ -53,6 +53,7 @@ app.post('/api/summarize', uploadMiddleware, summarizePDF);
 
 // Audio summarization endpoint
 app.post('/api/audiosummary', audioMiddleware, processAudioSummary);
+
 app.get('/api/audiosummary',(req, res) => {
     
     res.json({
