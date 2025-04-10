@@ -1,8 +1,10 @@
 const multer = require('multer');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const { OpenAI } = require('openai');
 const fs = require('fs');
+const FormData = require('form-data'); 
+const axios = require('axios');
+const { OpenAI } = require('openai');
 
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(__dirname, '..', 'uploads', 'audio');
@@ -38,10 +40,40 @@ const audioMiddleware = multer({
     }
 }).single('audio');
 
-// Configure OpenAI
+//Configure OpenAI
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
+
+// Configure AssemblyAI
+// Initialize axios client with base configuration
+const assemblyAI = axios.create({
+    baseURL: 'https://api.assemblyai.com/v2',
+    headers: {
+        authorization: process.env.ASSEMBLY_AI_API_KEY,
+    },
+    timeout: 30000 // 30 second timeout
+});
+
+const waitForTranscription = async (transcriptId, maxRetries = 30) => {
+    let attempts = 0;
+    while (attempts < maxRetries) {
+        const { data } = await assemblyAI.get(`/transcript/${transcriptId}`);
+        
+        if (data.status === 'completed') {
+            return data;
+        }
+        
+        if (data.status === 'error') {
+            throw new Error(`Transcription failed: ${data.error}`);
+        }
+
+        // Wait 2 seconds before next attempt
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+    }
+    throw new Error('Transcription timeout');
+};
 
 const processAudioSummary = async (req, res) => {
     try {
@@ -51,13 +83,13 @@ const processAudioSummary = async (req, res) => {
                 message: 'No audio file provided'
             });
         }
-        
+    
         console.log('Audio file received: ' + req.file.path);
+        const audioFilePath = req.file.path;
 
-       // console.log('Here is the size of the file that was passed in ', req.file.size);
         // Check if the file exists
-        if (!fs.existsSync(req.file.path)) {
-            console.error('File does not exist:', req.file.path);
+        if (!fs.existsSync(audioFilePath)) {
+            console.error('File does not exist:', audioFilePath);
             return res.status(500).json({
                 success: false,
                 message: 'File not found on server'
@@ -66,17 +98,29 @@ const processAudioSummary = async (req, res) => {
 
         console.log('Here is the size of the file that was passed in ', req.file.size);
 
-        // 1. First, transcribe the audio using OpenAI's Whisper API
-        const transcript = await openai.audio.transcriptions.create({
-            file: fs.createReadStream(req.file.path),
-            model: "gpt-4o-mini-transcribe"
+        // 1. First, transcribe the audio using AssemblyAI
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(req.file.path));
+
+        // Upload the file
+        const uploadResponse = await assemblyAI.post('/upload', formData, {
+            headers: {
+                ...formData.getHeaders(),
+            }
         });
 
-        console.log('Full transcript result:', transcript);
-        console.log('Transcript:', transcript.text);
+        // Start transcription
+        const transcriptionResponse = await assemblyAI.post('/transcript', {
+            audio_url: uploadResponse.data.upload_url,
+            language_detection: true
+        });
+
+        // Wait for transcription to complete
+        const transcript = await waitForTranscription(transcriptionResponse.data.id);
+
 
         // 2. Then, use GPT to extract key tasks from the transcript
-        if (transcript.text.length < 500) {
+        if (transcript.text.length < 5) {
             return res.status(400).json({
                 success: false,
                 message: 'Transcript is too short'
