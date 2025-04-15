@@ -72,46 +72,27 @@ const waitForTranscription = async (transcriptId, maxRetries = 30) => {
 
 const processAudioSummary = async (req, res) => {
     try {
-        if (!req.file) {
+        if (!req.file.buffer) {
             return res.status(400).json({
                 success: false,
                 message: 'No audio file provided'
             });
         }
 
-        console.log('Debug Info:', {
-            fileSize: req.file.size,
-            mimeType: req.file.mimetype,
-            buffer: req.file.buffer ? 'Buffer exists' : 'No buffer'
-        });
-
-        // Create form data specifically for AssemblyAI
+        // 1. First, transcribe the audio using AssemblyAI
         const formData = new FormData();
-        const audioBuffer = Buffer.from(req.file.buffer);
-        
-        formData.append('file', audioBuffer, {
-            filename: `recording.${req.file.mimetype.split('/')[1]}`,
-            contentType: req.file.mimetype,
-            knownLength: audioBuffer.length
-        });
+        formData.append('file', req.file.buffer);
 
-        // Upload to AssemblyAI with explicit headers
+        // Upload the file
         const uploadResponse = await assemblyAI.post('/upload', formData, {
             headers: {
                 ...formData.getHeaders(),
-                'Content-Type': `multipart/form-data; boundary=${formData.getBoundary()}`,
-                'Transfer-Encoding': 'chunked'
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity
+            }
         });
 
-        console.log('Upload response:', uploadResponse.data); // Debug log
-
-        // Start transcription with explicit audio format
+        // Start transcription
         const transcriptionResponse = await assemblyAI.post('/transcript', {
             audio_url: uploadResponse.data.upload_url,
-            content_type: req.file.mimetype, // Explicitly tell AssemblyAI the format
             language_detection: true
         });
 
