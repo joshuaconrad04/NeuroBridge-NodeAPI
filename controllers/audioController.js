@@ -9,19 +9,28 @@ const { OpenAI } = require('openai');
 const audioMiddleware = multer({
     storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
-       const allowedMimeTypes =  [
-        'audio/webm',
-        'audio/ogg',
-        'audio/mp4',
-        'audio/mpeg',
-        'audio/mp3',
-        'audio/wav',
-        'audio/flac'
-    ];
-    cb(null, allowedMimeTypes.includes(file.mimetype));
+        console.log('Incoming file type:', file.mimetype); // Debug log
+        const allowedMimes = [
+            'audio/webm',
+            'audio/ogg',
+            'audio/mp4',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/wav',
+            'audio/flac',
+            'audio/x-m4a',
+            'audio/aac'
+        ];
+        
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            console.log('Rejected file type:', file.mimetype); // Debug log
+            cb(new Error(`Unsupported audio format: ${file.mimetype}`), false);
+        }
     },
     limits: {
-        fileSize: 3 * 1024 * 1024 * 1024, // 3GB in bytes
+        fileSize: 250 * 1024 * 1024 // 250MB limit
     }
 }).single('audio');
 
@@ -126,6 +135,9 @@ const processAudioSummary = async (req, res) => {
         });
 
     } catch (error) {
+        // Clean up file if it exists
+
+
         console.error('Error processing audio:', error.message, error.stack);
         res.status(500).json({
             success: false,
