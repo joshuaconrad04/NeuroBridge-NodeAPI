@@ -1,42 +1,27 @@
 const multer = require('multer');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const fs = require('fs');
 const FormData = require('form-data'); 
 const axios = require('axios');
 const { OpenAI } = require('openai');
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, '..', 'uploads', 'audio');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configure multer for audio uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        if (file.mimetype === 'audio/mpeg') {
-            cb(null, Date.now() + path.extname(file.originalname) + '.mp3');
-        } else {
-            cb(null, Date.now() + path.extname(file.originalname));
-        }
-    }
-});
 
 const audioMiddleware = multer({
-    storage: storage,
+    storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3') {
-            cb(null, true);
-        } else {
-            cb(new Error('Only MP3 files are allowed!'), false);
-        }
+       const allowedMimeTypes =  [
+        'audio/webm',
+        'audio/ogg',
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/mp3',
+        'audio/wav',
+        'audio/flac'
+    ];
+    cb(null, allowedMimeTypes.includes(file.mimetype));
     },
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
+        fileSize: 3 * 1024 * 1024 * 1024, // 3GB in bytes
     }
 }).single('audio');
 
@@ -77,30 +62,16 @@ const waitForTranscription = async (transcriptId, maxRetries = 30) => {
 
 const processAudioSummary = async (req, res) => {
     try {
-        if (!req.file) {
+        if (!req.file.buffer) {
             return res.status(400).json({
                 success: false,
                 message: 'No audio file provided'
             });
         }
-    
-        console.log('Audio file received: ' + req.file.path);
-        const audioFilePath = req.file.path;
-
-        // Check if the file exists
-        if (!fs.existsSync(audioFilePath)) {
-            console.error('File does not exist:', audioFilePath);
-            return res.status(500).json({
-                success: false,
-                message: 'File not found on server'
-            });
-        }
-
-        console.log('Here is the size of the file that was passed in ', req.file.size);
 
         // 1. First, transcribe the audio using AssemblyAI
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(req.file.path));
+        formData.append('file', req.file.buffer);
 
         // Upload the file
         const uploadResponse = await assemblyAI.post('/upload', formData, {
@@ -155,13 +126,6 @@ const processAudioSummary = async (req, res) => {
         });
 
     } catch (error) {
-        // Clean up file if it exists
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting file:', err);
-            });
-        }
-
         console.error('Error processing audio:', error.message, error.stack);
         res.status(500).json({
             success: false,
