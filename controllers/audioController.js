@@ -9,7 +9,8 @@ const { OpenAI } = require('openai');
 const audioMiddleware = multer({
     storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
-        console.log('Incoming file type:', file.mimetype); // Debug log
+        console.log('Incoming file type:', file.mimetype); 
+        // Debug log
         const allowedMimes = [
             'audio/webm',
             'audio/ogg',
@@ -71,27 +72,46 @@ const waitForTranscription = async (transcriptId, maxRetries = 30) => {
 
 const processAudioSummary = async (req, res) => {
     try {
-        if (!req.file.buffer) {
+        if (!req.file) {
             return res.status(400).json({
                 success: false,
                 message: 'No audio file provided'
             });
         }
 
-        // 1. First, transcribe the audio using AssemblyAI
-        const formData = new FormData();
-        formData.append('file', req.file.buffer);
+        console.log('Debug Info:', {
+            fileSize: req.file.size,
+            mimeType: req.file.mimetype,
+            buffer: req.file.buffer ? 'Buffer exists' : 'No buffer'
+        });
 
-        // Upload the file
+        // Create form data specifically for AssemblyAI
+        const formData = new FormData();
+        const audioBuffer = Buffer.from(req.file.buffer);
+        
+        formData.append('file', audioBuffer, {
+            filename: `recording.${req.file.mimetype.split('/')[1]}`,
+            contentType: req.file.mimetype,
+            knownLength: audioBuffer.length
+        });
+
+        // Upload to AssemblyAI with explicit headers
         const uploadResponse = await assemblyAI.post('/upload', formData, {
             headers: {
                 ...formData.getHeaders(),
-            }
+                'Content-Type': `multipart/form-data; boundary=${formData.getBoundary()}`,
+                'Transfer-Encoding': 'chunked'
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity
         });
 
-        // Start transcription
+        console.log('Upload response:', uploadResponse.data); // Debug log
+
+        // Start transcription with explicit audio format
         const transcriptionResponse = await assemblyAI.post('/transcript', {
             audio_url: uploadResponse.data.upload_url,
+            content_type: req.file.mimetype, // Explicitly tell AssemblyAI the format
             language_detection: true
         });
 
